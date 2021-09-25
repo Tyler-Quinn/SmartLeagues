@@ -50,10 +50,6 @@ contract("SmartLeagues", accounts => {
     assert(false);
   });
 
-it ('', async () => {
-
-});
-
   it('Cannot join a league that does not exist', async () => {
     try {
       await smartLeagues.joinLeagueRound('NonexistentLeague', 'Player1', false, {from: accounts[0]});
