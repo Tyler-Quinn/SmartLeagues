@@ -131,7 +131,7 @@ contract SmartLeagues is ReentrancyGuard{
         // cannot start a round if a round is already in progress
         require(!nameToLeague[nameHash].roundOpen, "Round already open");
         // price to join must be positive
-        require(_priceToJoin > 0, "Price to join must be positive");
+        require(_priceToJoin > 0, "Price to join must be positive, non-zero");
         // ace pool price must be non-negative
         require(_priceAcePool >= 0, "Ace pool price must be non-negative, set to zero if no ace pool");
         // amount of max players must be more than one

@@ -50,9 +50,56 @@ contract("SmartLeagues", accounts => {
     assert(false);
   });
 
-it ('', async () => {
+  it ('Round price must be greater than zero', async () => {
+    try {
+      await smartLeagues.startLeagueRound('test', 0, 50, 8, 18, [60,40], {from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('Price to join must be positive, non-zero'));
+      return;
+    }
+    assert(false);
+  });
 
-});
+  it ('Max players must be greater than one', async () => {
+    try {
+      await smartLeagues.startLeagueRound('test', 200, 50, 0, 18, [60,40], {from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('Max number of players must be more than one'));
+      return;
+    }
+    assert(false);
+  });
+
+  it ('Round needs to have a non-zero number of holes', async () => {
+    try {
+      await smartLeagues.startLeagueRound('test', 200, 50, 8, 0, [60,40], {from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('Need to have a positive non-zero number of holes for the round'));
+      return;
+    }
+    assert(false);
+  });
+
+  it ('Sum of the payment scheme array must not excede 100', async () => {
+    try {
+      await smartLeagues.startLeagueRound('test', 200, 50, 8, 18, [60,60], {from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('Payout scheme invalid, all places must be less than or equal to 100'));
+      return;
+    }
+    assert(false);
+  });
+
+  it ('Start round then check there is a round open by trying to start another (cannot open two rounds in the same league)', async () => {
+    await smartLeagues.startLeagueRound('test', web3.utils.toWei('2', 'ether'), web3.utils.toWei('0.5', 'ether'), 3, 3, [60,40], {from: accounts[0]});
+    try {
+      await smartLeagues.startLeagueRound('test', web3.utils.toWei('2', 'ether'), web3.utils.toWei('0.5', 'ether'), 3, 3, [60,40], {from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('Round already open'));
+      return;
+    }
+    assert(false);
+  });
 
   it('Cannot join a league that does not exist', async () => {
     try {
