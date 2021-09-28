@@ -210,7 +210,7 @@ contract SmartLeagues is ReentrancyGuard{
             (bool sent,) = payable(address(this)).call{value: msg.value}("");
             require(sent, "Failed to send Ether");
         }
-        // emit player joined event
+
         //emit PlayerJoinedRound(msg.sender, _player.nickname, nameHash);
     }
 

@@ -90,6 +90,16 @@ contract("SmartLeagues", accounts => {
     assert(false);
   });
 
+  it ('Cannot join a round in a league that does not have an open round', async () => {
+    try {
+      await smartLeagues.joinLeagueRound('test', 'Player1', false, {from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('A round has not been started'));
+      return;
+    }
+    assert(false);
+  });
+
   it ('Start round then check there is a round open by trying to start another (cannot open two rounds in the same league)', async () => {
     await smartLeagues.startLeagueRound('test', web3.utils.toWei('2', 'ether'), web3.utils.toWei('0.5', 'ether'), 3, 3, [60,40], {from: accounts[0]});
     try {
@@ -101,7 +111,7 @@ contract("SmartLeagues", accounts => {
     assert(false);
   });
 
-  it('Cannot join a league that does not exist', async () => {
+  it('Cannot join a round for a league that does not exist', async () => {
     try {
       await smartLeagues.joinLeagueRound('NonexistentLeague', 'Player1', false, {from: accounts[0]});
     } catch(e) {
@@ -109,5 +119,51 @@ contract("SmartLeagues", accounts => {
       return;
     }
     assert(false);
+  });
+
+  it('Cannot join round if the amount sent to the contract does not match the priceToJoin (ace pool FALSE)', async () => {
+    try {
+      // price to join is 2 ether
+      await smartLeagues.joinLeagueRound('test', 'Player1', false, {value: 20, from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('Incorrect funds to join round'));
+      return;
+    }
+    assert(false);
+  });
+
+  it('Cannot join round if the amount sent to the contract does not match the priceToJoin (ace pool TRUE)', async () => {
+    try {
+      // price to join is 2 ether, price for ace pool is 0.5 ether
+      await smartLeagues.joinLeagueRound('test', 'Player1', true, {value: web3.utils.toWei('2', 'ether'), from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('Incorrect funds to join round + ace pool'));
+      return;
+    }
+    assert(false);
+  });
+
+  it('Join round, ensure round variables are updated and funds are placed properly', async () => {
+    // check pre join round round variables
+    let result = await smartLeagues.getNumberOfPlayers('test');
+    let b = (result == 0);
+    result = await smartLeagues.getLeagueBalance('test');
+    b = b && (result == 0);
+    result = await smartLeagues.getRoundBalance('test');
+    b = b && (result == 0);
+    result = await smartLeagues.getAcePoolBalance('test');
+    b = b && (result == 0);
+    // join; price to join is 2 ether
+    await smartLeagues.joinLeagueRound('test', 'Player1', false, {value: web3.utils.toWei('2', 'ether'), from: accounts[0]});
+    // check post join round round variables
+    result = await smartLeagues.getNumberOfPlayers('test');
+    b = b && (result == 1);
+    result = await smartLeagues.getLeagueBalance('test');
+    b = b && (result == 0);
+    result = await smartLeagues.getRoundBalance('test');
+    b = b && (result == web3.utils.toWei('2', 'ether'));
+    result = await smartLeagues.getAcePoolBalance('test');
+    b = b && (result == 0);
+    assert(b);
   });
 });
