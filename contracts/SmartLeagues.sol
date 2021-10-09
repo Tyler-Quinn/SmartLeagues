@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
-import "./@openzeppelin/contracts/access/Ownable.sol";
 import "./@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -15,7 +14,6 @@ contract SmartLeagues is ReentrancyGuard{
 
     struct Player {
         address payable userAddress;
-        string nickname;
         uint16[] holeScores;
         uint256 totalScore;
         bool scoresSubmitted;
@@ -165,7 +163,6 @@ contract SmartLeagues is ReentrancyGuard{
 
     function joinLeagueRound(
         string memory _leagueName,
-        string memory _nickname,
         bool _joinAcePool
     )
         external
@@ -182,7 +179,6 @@ contract SmartLeagues is ReentrancyGuard{
         // create temporary player that will later be pushed to the round player array
         Player memory _player;
         _player.userAddress = payable(msg.sender);
-        _player.nickname = _nickname;
         _player.scoresSubmitted = false;
         delete _player.holeScores;
         // ensure the player has sent enough funds to join the round
@@ -336,7 +332,7 @@ contract SmartLeagues is ReentrancyGuard{
         require(nameToLeague[nameHash].roundOpen, "There is no open round for this league");
         // get the index of the player in the round.player[] array; player must be in the array to continue
         uint16 _index = addressInRound(_leagueName, msg.sender);
-        require(_index != MAX_UINT16, "Address is not included in this league's round");
+        require(_index != MAX_UINT16, "Address is not included in this leagues round");
         // require that this player has not already submitted their scores
         require(!nameToLeague[nameHash].round.player[_index].scoresSubmitted, "Scores already submitted");
         nameToLeague[nameHash].round.player[_index].scoresSubmitted = true;
@@ -353,7 +349,7 @@ contract SmartLeagues is ReentrancyGuard{
 
     // returns the index in the round's player[] array; if address is not in the league it will return max value of uint16(65535) 
     function addressInRound(string memory _leagueName, address _addressCheck)
-        internal
+        public
         view
         leagueExists(_leagueName)
         returns(uint16)
@@ -389,26 +385,22 @@ contract SmartLeagues is ReentrancyGuard{
         if (_i < _right)
             playerQuickSort(_nameHash, _i, _right);
     }
-    
-    function getNumberOfPlayers(string memory _leagueName) external view leagueExists(_leagueName) returns(uint16) {
+
+    function getLeagueInfo(string memory _leagueName) external view leagueExists(_leagueName) returns(League memory) {
         bytes32 nameHash = keccak256(abi.encodePacked(_leagueName));
-        require(nameToLeague[nameHash].roundOpen, "This league does not have a round open");
-        return uint16(nameToLeague[nameHash].round.player.length);
+        return nameToLeague[nameHash];
     }
-    
-    function getLeagueBalance(string memory _leagueName) external view leagueExists(_leagueName) returns(uint256) {
+
+    function getLeagueRoundInfo(string memory _leagueName) external view leagueExists(_leagueName) returns(Round memory) {
         bytes32 nameHash = keccak256(abi.encodePacked(_leagueName));
-        return nameToLeague[nameHash].balance;
+        require(nameToLeague[nameHash].roundOpen, 'No round open');
+        return nameToLeague[nameHash].round;
     }
-    
-    function getRoundBalance(string memory _leagueName) external view leagueExists(_leagueName) returns(uint256) {
+
+    function getLeagueRoundPlayerInfo(string memory _leagueName, address _address) external view leagueExists(_leagueName) returns(Player memory) {
+        uint16 index = addressInRound(_leagueName, _address);
+        require(index != MAX_UINT16, 'Address not included in round');
         bytes32 nameHash = keccak256(abi.encodePacked(_leagueName));
-        require(nameToLeague[nameHash].roundOpen, "This league does not have a round open");
-        return nameToLeague[nameHash].round.balance;
-    }
-    
-    function getAcePoolBalance(string memory _leagueName) external view leagueExists(_leagueName) returns(uint256) {
-        bytes32 nameHash = keccak256(abi.encodePacked(_leagueName));
-        return nameToLeague[nameHash].acePoolBalance;
+        return nameToLeague[nameHash].round.player[index];
     }
 }
