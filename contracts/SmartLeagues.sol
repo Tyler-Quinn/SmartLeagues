@@ -224,7 +224,7 @@ contract SmartLeagues is ReentrancyGuard{
         require(nameToLeague[nameHash].roundOpen, "There is no open round for this league");
         // get the index of the player in the round.player[] array; player must be in the array to continue
         uint16 _index = addressInRound(_leagueName, msg.sender);
-        require(_index != MAX_UINT16, "Address is not included in this league's round");
+        require(_index != MAX_UINT16, "Address is not included in this leagues round");
         // require that this player has not already submitted their scores
         require(!nameToLeague[nameHash].round.player[_index].scoresSubmitted, "Scores already submitted");
         nameToLeague[nameHash].round.player[_index].scoresSubmitted = true;
@@ -249,17 +249,15 @@ contract SmartLeagues is ReentrancyGuard{
 
         // increment finished player count
         nameToLeague[nameHash].round.finishedCount++;
-        // if the last player to finish, payout winners
-        if (nameToLeague[nameHash].round.finishedCount == nameToLeague[nameHash].round.player.length) {
-            payoutWinner(_leagueName);
-        }
     }
 
-    function payoutWinner(string memory _leagueName)
-        internal
+    function payoutWinners(string memory _leagueName)
+        external
         leagueExists(_leagueName)
     {
         bytes32 nameHash = keccak256(abi.encodePacked(_leagueName));
+        // only the league owner can call payout
+        require(nameToLeague[nameHash].owner == msg.sender, "Only the league owner can call payout");
         // league round must be open
         require(nameToLeague[nameHash].roundOpen, "There is no open round for this league");
         // when can payouts be done
@@ -341,10 +339,6 @@ contract SmartLeagues is ReentrancyGuard{
 
         // increment finished player count
         nameToLeague[nameHash].round.finishedCount++;
-        // if the last player to finish, payout winners
-        if (nameToLeague[nameHash].round.finishedCount == nameToLeague[nameHash].round.player.length) {
-            payoutWinner(_leagueName);
-        }
     }
 
     // returns the index in the round's player[] array; if address is not in the league it will return max value of uint16(65535) 

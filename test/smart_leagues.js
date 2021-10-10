@@ -3,6 +3,7 @@ const SmartLeagues = artifacts.require("SmartLeagues.sol");
 const BN = require('bn.js');
 const { assert } = require('console');
 
+
 /*
  * uncomment accounts to access the test accounts made available by the
  * Ethereum client
@@ -202,7 +203,7 @@ contract("SmartLeagues", accounts => {
   it('Player2 join round (ace pool TRUE), ensure round variables are updated and funds are placed properly', async () => {
     // check pre join round round variables
     let result = await smartLeagues.getLeagueRoundInfo('test');
-    assert(result.player.length == 0);
+    assert(result.player.length == 1);
     result = await smartLeagues.getLeagueInfo('test');
     assert(result.balance == 0);
     result = await smartLeagues.getLeagueRoundInfo('test');
@@ -265,10 +266,6 @@ contract("SmartLeagues", accounts => {
     assert(false);
   });
 
-  it('Test getLeagueRoundPlayer getter', async () => {
-
-  });
-
   it('Player3 successfully forfeits the round, check round variables', async () => {
     let index = await smartLeagues.addressInRound('test', accounts[2]);
     assert(index == 2);
@@ -288,4 +285,110 @@ contract("SmartLeagues", accounts => {
     }
     assert(false);
   });
+
+  it('Cannot submit scores to a league that does not exist', async () => {
+    try {
+      await smartLeagues.submitScores('NonexistentLeague', [3,3,4], {from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('League name does not exist'));
+      return;
+    }
+    assert(false);
+  });
+
+  it('Cannot submit scores if this address is not included in the round', async () => {
+    try {
+      await smartLeagues.submitScores('test', [3,3,4], {from: accounts[4]});
+    } catch(e) {
+      assert(e.message.includes('Address is not included in this leagues round'));
+      return;
+    }
+    assert(false);
+  });
+
+  it('Cannot submit scores if this address has already submitted scores', async () => {
+    try {
+      await smartLeagues.submitScores('test', [3,3,4], {from: accounts[2]});
+    } catch(e) {
+      assert(e.message.includes('Scores already submitted'));
+      return;
+    }
+    assert(false);
+  });
+
+  it('Cannot submit scores if array size does not match number of holes in round', async () => {
+    try {
+      await smartLeagues.submitScores('test', [3,3,3,3], {from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('Invalid array size for hole scores'));
+      return;
+    }
+    assert(false);
+  });
+
+  it('Submit scores and check player state variables', async () => {
+    try {
+      await smartLeagues.submitScores('test', [3,3,4], {from: accounts[0]});
+    } catch(e) {
+      assert(false);
+      return;
+    }
+    let result = await smartLeagues.getLeagueRoundPlayerInfo('test', accounts[0]);
+    assert(result.scoresSubmitted);
+    assert(!result.acePoolWin);
+    assert(JSON.stringify(result.holeScores) == JSON.stringify(['3','3','4']));
+    assert(result.totalScore == 10);
+    result = await smartLeagues.getLeagueRoundInfo('test');
+    assert(result.finishedCount == 2);
+  });
+
+  it('Cannot call payouts for a league that does not exist', async () => {
+    try {
+      await smartLeagues.payoutWinners('NonexistentLeauge', {from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('League name does not exist'));
+      return;
+    }
+    assert(false);
+  });
+
+  it('Cannot call payouts if not the league owner', async () => {
+    try {
+      await smartLeagues.payoutWinners('test', {from: accounts[1]});
+    } catch(e) {
+      assert(e.message.includes('Only the league owner can call payout'));
+      return;
+    }
+    assert(false);
+  });
+
+  it('Cannot call payouts if not all players have submitted scores', async () => {
+    try {
+      await smartLeagues.payoutWinners('test', {from: accounts[0]});
+    } catch(e) {
+      assert(e.message.includes('Payout conditions not met'));
+      return;
+    }
+    assert(false);
+  });
+
+  it('Final player submits scores; check player state variables', async () => {
+    try {
+      await smartLeagues.submitScores('test', [3,3,2], {from: accounts[1]});
+    } catch(e) {
+      assert(false);
+      return;
+    }
+    let result = await smartLeagues.getLeagueRoundPlayerInfo('test', accounts[1]);
+    assert(result.scoresSubmitted);
+    assert(!result.acePoolWin);
+    assert(JSON.stringify(result.holeScores) == JSON.stringify(['3','3','2']));
+    assert(result.totalScore == 8);
+    result = await smartLeagues.getLeagueRoundInfo('test');
+    assert(result.finishedCount == 3);
+  });
+
+  // All players have now submitted scores
+
+  
 });
