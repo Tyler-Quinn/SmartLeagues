@@ -344,7 +344,7 @@ contract("SmartLeagues", accounts => {
 
   it('Cannot call payouts for a league that does not exist', async () => {
     try {
-      await smartLeagues.payoutWinners('NonexistentLeauge', {from: accounts[0]});
+      await smartLeagues.finishRound('NonexistentLeauge', {from: accounts[0]});
     } catch(e) {
       assert(e.message.includes('League name does not exist'));
       return;
@@ -354,7 +354,7 @@ contract("SmartLeagues", accounts => {
 
   it('Cannot call payouts if not the league owner', async () => {
     try {
-      await smartLeagues.payoutWinners('test', {from: accounts[1]});
+      await smartLeagues.finishRound('test', {from: accounts[1]});
     } catch(e) {
       assert(e.message.includes('Only the league owner can call payout'));
       return;
@@ -364,7 +364,7 @@ contract("SmartLeagues", accounts => {
 
   it('Cannot call payouts if not all players have submitted scores', async () => {
     try {
-      await smartLeagues.payoutWinners('test', {from: accounts[0]});
+      await smartLeagues.finishRound('test', {from: accounts[0]});
     } catch(e) {
       assert(e.message.includes('Payout conditions not met'));
       return;
@@ -389,6 +389,30 @@ contract("SmartLeagues", accounts => {
   });
 
   // All players have now submitted scores
-
   
+  it('Submit scores, check player balances and league state variables', async () => {
+    try {
+      let result = await smartLeagues.getLeagueRoundInfo('test');
+      await smartLeagues.finishRound('test', {from: accounts[0]});
+    } catch(e) {
+      console.log(e.message);
+      assert(false);
+      return;
+    }
+    result = await smartLeagues.winnings(accounts[1]);
+    assert(result == web3.utils.toWei('3.6', 'ether'));
+    result = await smartLeagues.winnings(accounts[0]);
+    assert(result == web3.utils.toWei('2.4', 'ether'));
+    result = await smartLeagues.winnings(accounts[2]);
+    assert(result == 0);
+    result = await smartLeagues.getLeagueInfo('test');
+    // round no longer open
+    assert(!result.roundOpen);
+    // no left over to pool to the league balance
+    assert(result.balance == 0);
+    // ace pool should remain in league info
+    assert(result.acePoolBalance = web3.utils.toWei('1', 'ether'));
+  });
+
+  // Successfully settled a league round
 });

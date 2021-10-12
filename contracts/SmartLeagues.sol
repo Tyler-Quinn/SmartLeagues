@@ -49,7 +49,7 @@ contract SmartLeagues is ReentrancyGuard{
 
     mapping (bytes32 => League) internal nameToLeague;
     mapping (bytes32 => bool) internal leagueNames;
-    mapping (address => bytes32) internal addressToLeagueRoundJoined;
+    mapping (address => uint) public winnings;
 
     uint256 MAX_UINT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     uint16 MAX_UINT16 = 0xffff;
@@ -251,7 +251,7 @@ contract SmartLeagues is ReentrancyGuard{
         nameToLeague[nameHash].round.finishedCount++;
     }
 
-    function payoutWinners(string memory _leagueName)
+    function finishRound(string memory _leagueName)
         external
         leagueExists(_leagueName)
     {
@@ -274,7 +274,6 @@ contract SmartLeagues is ReentrancyGuard{
 
         uint256 _totalRoundBalance = nameToLeague[nameHash].round.balance;
         for (uint _payoutIndex = 0; (_payoutIndex < nameToLeague[nameHash].round.payoutPercentage.length) && (nameToLeague[nameHash].round.payoutPercentage[_payoutIndex] != 0); ) {
-            // i is the index in the payout scheme
             // get number of tied players for this spot in the payout scheme
             uint16 _playersInPlaceCount = 1;
             while (nameToLeague[nameHash].round.player[_payoutIndex].totalScore == nameToLeague[nameHash].round.player[_payoutIndex + _playersInPlaceCount].totalScore) {
@@ -292,29 +291,36 @@ contract SmartLeagues is ReentrancyGuard{
             // integer division means there may be left over funds after payouts, these are rolled into the league balance
             uint256 _percentPayoutForPlace = SafeMath.div(uint(_totalPlacePayoutPercentage), uint(_playersInPlaceCount));
             // get total amount paid for this place
-            uint256 _amountPaid = SafeMath.mul(_percentPayoutForPlace, SafeMath.div(_totalRoundBalance, 100));
+            uint256 _amountPaid = SafeMath.mul(_percentPayoutForPlace, SafeMath.div(uint(_totalRoundBalance), uint(100)));
 
             // payout all players in this place
             for (uint16 j = 0; j < _playersInPlaceCount; j++) {
                 // subtract from round balance
-                require(nameToLeague[nameHash].round.balance >= _amountPaid, "Round balance not large enough to pay out");
+                //require(nameToLeague[nameHash].round.balance >= _amountPaid, "Round balance not large enough to pay out");
                 nameToLeague[nameHash].round.balance -= _amountPaid;
-                if (nameToLeague[nameHash].round.player[_payoutIndex = j].acePoolWin) {
-                    require(nameToLeague[nameHash].round.balance >= _acePoolPayout, "Ace pool balance not large enough to pay out");
+                /*
+                if(nameToLeague[nameHash].round.balance < _amountPaid) {
+                    _amountPaid = nameToLeague[nameHash].round.balance;
+                    nameToLeague[nameHash].round.balance = 0;
+                } else {
+                    nameToLeague[nameHash].round.balance -= _amountPaid;
+                }
+                */
+                if (nameToLeague[nameHash].round.player[_payoutIndex + j].acePoolWin) {
+                    require(nameToLeague[nameHash].acePoolBalance >= _acePoolPayout, "Ace pool balance not large enough to pay out");
                     nameToLeague[nameHash].acePoolBalance -= _acePoolPayout;
                     // send to address
-                    (bool sent,) = nameToLeague[nameHash].round.player[_payoutIndex + j].userAddress.call{value: _amountPaid + _acePoolPayout}("");
-                    require(sent, "Failed to send Ether");
+                    winnings[nameToLeague[nameHash].round.player[_payoutIndex + j].userAddress] += _amountPaid + _acePoolPayout;
                 } else {
                     // send to address
-                    (bool sent,) = nameToLeague[nameHash].round.player[_payoutIndex + j].userAddress.call{value: _amountPaid}("");
-                    require(sent, "Failed to send Ether");
+                    winnings[nameToLeague[nameHash].round.player[_payoutIndex + j].userAddress] += _amountPaid;
                 }
             }
 
             // adjust player payout index to account for any ties before looping to next in line for payout check
             _payoutIndex += _playersInPlaceCount;
         }
+        
 
         // move any leftover funds to the league's balance
         nameToLeague[nameHash].balance += nameToLeague[nameHash].round.balance;
@@ -339,6 +345,12 @@ contract SmartLeagues is ReentrancyGuard{
 
         // increment finished player count
         nameToLeague[nameHash].round.finishedCount++;
+    }
+
+    function claimWinnings() external {
+        require(winnings[msg.sender] != 0, 'Nothnig to claim');
+        (bool sent,) = msg.sender.call{value: winnings[msg.sender]}("");
+        require(sent, "Failed to send Ether");
     }
 
     // returns the index in the round's player[] array; if address is not in the league it will return max value of uint16(65535) 
