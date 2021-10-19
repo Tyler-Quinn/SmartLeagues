@@ -104,6 +104,7 @@ contract("SmartLeagues", accounts => {
     assert(false);
   });
 
+  /*
   it ('Cannot forfeit a round in a league that does not exist', async () => {
     try {
       await smartLeagues.forfeitRound('NonexistentLeague');
@@ -113,7 +114,9 @@ contract("SmartLeagues", accounts => {
     }
     assert(false);
   });
+  */
 
+  /*
   it ('Cannot forfeit a round if a league does not have an open round', async () => {
     try {
       await smartLeagues.forfeitRound('test');
@@ -123,6 +126,7 @@ contract("SmartLeagues", accounts => {
     }
     assert(false);
   });
+  */
 
   it ('Start round then check there is a round open by trying to start another (cannot open two rounds in the same league)', async () => {
     await smartLeagues.startLeagueRound('test', web3.utils.toWei('2', 'ether'), web3.utils.toWei('0.5', 'ether'), 3, 3, [60,40], {from: accounts[0]});
@@ -256,6 +260,7 @@ contract("SmartLeagues", accounts => {
     assert(false);
   });
 
+  /*
   it ('Cannot forfeit a round if this address is not included in the round', async () => {
     try {
       await smartLeagues.forfeitRound('test', {from: accounts[5]});
@@ -265,7 +270,9 @@ contract("SmartLeagues", accounts => {
     }
     assert(false);
   });
+  */
 
+  /*
   it('Player3 successfully forfeits the round, check round variables', async () => {
     let index = await smartLeagues.addressInRound('test', accounts[2]);
     assert(index == 2);
@@ -275,7 +282,9 @@ contract("SmartLeagues", accounts => {
     result = await smartLeagues.getLeagueRoundPlayerInfo('test', accounts[2]);
     assert(result.scoresSubmitted);
   });
+  */
 
+  /*
   it('Cannot forfeit round if scores have already been submitted', async () => {
     try {
       await smartLeagues.forfeitRound('test', {from: accounts[2]});
@@ -284,6 +293,23 @@ contract("SmartLeagues", accounts => {
       return;
     }
     assert(false);
+  });
+  */
+
+  it('Player3 submits scores and check player state variables', async () => {
+    try {
+      await smartLeagues.submitScores('test', [3,3,6], {from: accounts[2]});
+    } catch(e) {
+      assert(false);
+      return;
+    }
+    let result = await smartLeagues.getLeagueRoundPlayerInfo('test', accounts[2]);
+    assert(result.scoresSubmitted);
+    assert(!result.acePoolWin);
+    assert(JSON.stringify(result.holeScores) == JSON.stringify(['3','3','6']));
+    assert(result.totalScore == 12);
+    result = await smartLeagues.getLeagueRoundInfo('test');
+    assert(result.finishedCount == 1);
   });
 
   it('Cannot submit scores to a league that does not exist', async () => {
@@ -415,4 +441,27 @@ contract("SmartLeagues", accounts => {
   });
 
   // Successfully settled a league round
+
+  it('Cannot claim winnings if there are no winnings for this address', async () => {
+    try {
+      await smartLeagues.claimWinnings({from: accounts[2]});
+    } catch(e) {
+      assert(e.message.includes('Nothnig to claim'));
+      return;
+    }
+    assert(false);
+  });
+
+  it('Player1 claims their winnings which updates their account balance', async () => {
+    let initialBalance = await web3.eth.getBalance(accounts[0]);
+    try {
+      await smartLeagues.claimWinnings({from: accounts[0]});
+    } catch(e) {
+      assert(false);
+      return;
+    }
+    let targetBalance = eval(initialBalance) + eval(web3.utils.toWei('3.6', 'ether'));
+    let result = await web3.eth.getBalance(accounts[0]);
+    assert((result > initialBalance) && (result < targetBalance));  // result will be less than targetBalance due to gas fee of calling claimWinnings
+  });
 });

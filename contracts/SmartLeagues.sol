@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
+import "./SmartLeaguesBase.sol";
 import "./@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "./@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract SmartLeagues is ReentrancyGuard{
+contract SmartLeagues is SmartLeaguesBase {
     constructor() {
     }
 
@@ -49,10 +49,6 @@ contract SmartLeagues is ReentrancyGuard{
 
     mapping (bytes32 => League) internal nameToLeague;
     mapping (bytes32 => bool) internal leagueNames;
-    mapping (address => uint) public winnings;
-
-    uint256 MAX_UINT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-    uint16 MAX_UINT16 = 0xffff;
 
     modifier leagueExists(string memory _name) {
         require(leagueNames[keccak256(abi.encodePacked(_name))], "League name does not exist");
@@ -89,12 +85,6 @@ contract SmartLeagues is ReentrancyGuard{
         }
         require(false, "Address is not included in the round");
     }
-    
-    // Function to receive Ether. msg.data must be empty
-    receive() external payable {}
-
-    // Fallback function is called when msg.data is not empty
-    fallback() external payable {}
 
     function createLeague(string memory _name) external leagueDoesNotExist(_name) {
         bytes32 nameHash = keccak256(abi.encodePacked(_name));
@@ -237,7 +227,6 @@ contract SmartLeagues is ReentrancyGuard{
         // move inputted hole scores to the league round data
         uint256 _scoreSum = 0;
         for (uint256 i = 0; i < nameToLeague[nameHash].round.numberOfHoles; i++) {
-            // _scoreSum = SafeMath.add(uint256(nameToLeague[nameHash].round.player[_index].holeScores[i]), _scoreSum);
             _scoreSum = SafeMath.add(uint256(_holeScore[i]), _scoreSum);
             // if ace was had on this hole and player is in ace pool, set win ace pool 
             if (nameToLeague[nameHash].round.player[_index].acePoolEntry && _holeScore[i] == 1) {
@@ -296,23 +285,17 @@ contract SmartLeagues is ReentrancyGuard{
             // payout all players in this place
             for (uint16 j = 0; j < _playersInPlaceCount; j++) {
                 // subtract from round balance
-                //require(nameToLeague[nameHash].round.balance >= _amountPaid, "Round balance not large enough to pay out");
-                nameToLeague[nameHash].round.balance -= _amountPaid;
-                /*
                 if(nameToLeague[nameHash].round.balance < _amountPaid) {
                     _amountPaid = nameToLeague[nameHash].round.balance;
                     nameToLeague[nameHash].round.balance = 0;
                 } else {
                     nameToLeague[nameHash].round.balance -= _amountPaid;
                 }
-                */
                 if (nameToLeague[nameHash].round.player[_payoutIndex + j].acePoolWin) {
                     require(nameToLeague[nameHash].acePoolBalance >= _acePoolPayout, "Ace pool balance not large enough to pay out");
                     nameToLeague[nameHash].acePoolBalance -= _acePoolPayout;
-                    // send to address
                     winnings[nameToLeague[nameHash].round.player[_payoutIndex + j].userAddress] += _amountPaid + _acePoolPayout;
                 } else {
-                    // send to address
                     winnings[nameToLeague[nameHash].round.player[_payoutIndex + j].userAddress] += _amountPaid;
                 }
             }
@@ -320,37 +303,12 @@ contract SmartLeagues is ReentrancyGuard{
             // adjust player payout index to account for any ties before looping to next in line for payout check
             _payoutIndex += _playersInPlaceCount;
         }
-        
 
         // move any leftover funds to the league's balance
         nameToLeague[nameHash].balance += nameToLeague[nameHash].round.balance;
         nameToLeague[nameHash].round.balance = 0;
         // close round
         nameToLeague[nameHash].roundOpen = false;
-    }
-
-    // submits max value as this msg.sender's total score so it will automatically be last place
-    function forfeitRound(string memory _leagueName) external leagueExists(_leagueName) {
-        bytes32 nameHash = keccak256(abi.encodePacked(_leagueName));
-        // league must have an open round
-        require(nameToLeague[nameHash].roundOpen, "There is no open round for this league");
-        // get the index of the player in the round.player[] array; player must be in the array to continue
-        uint16 _index = addressInRound(_leagueName, msg.sender);
-        require(_index != MAX_UINT16, "Address is not included in this leagues round");
-        // require that this player has not already submitted their scores
-        require(!nameToLeague[nameHash].round.player[_index].scoresSubmitted, "Scores already submitted");
-        nameToLeague[nameHash].round.player[_index].scoresSubmitted = true;
-
-        nameToLeague[nameHash].round.player[_index].totalScore = MAX_UINT;
-
-        // increment finished player count
-        nameToLeague[nameHash].round.finishedCount++;
-    }
-
-    function claimWinnings() external {
-        require(winnings[msg.sender] != 0, 'Nothnig to claim');
-        (bool sent,) = msg.sender.call{value: winnings[msg.sender]}("");
-        require(sent, "Failed to send Ether");
     }
 
     // returns the index in the round's player[] array; if address is not in the league it will return max value of uint16(65535) 
