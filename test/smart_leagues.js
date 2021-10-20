@@ -104,30 +104,6 @@ contract("SmartLeagues", accounts => {
     assert(false);
   });
 
-  /*
-  it ('Cannot forfeit a round in a league that does not exist', async () => {
-    try {
-      await smartLeagues.forfeitRound('NonexistentLeague');
-    } catch(e) {
-      assert(e.message.includes('League name does not exist'));
-      return;
-    }
-    assert(false);
-  });
-  */
-
-  /*
-  it ('Cannot forfeit a round if a league does not have an open round', async () => {
-    try {
-      await smartLeagues.forfeitRound('test');
-    } catch(e) {
-      assert(e.message.includes('There is no open round for this league'));
-      return;
-    }
-    assert(false);
-  });
-  */
-
   it ('Start round then check there is a round open by trying to start another (cannot open two rounds in the same league)', async () => {
     await smartLeagues.startLeagueRound('test', web3.utils.toWei('2', 'ether'), web3.utils.toWei('0.5', 'ether'), 3, 3, [60,40], {from: accounts[0]});
     try {
@@ -259,42 +235,6 @@ contract("SmartLeagues", accounts => {
     }
     assert(false);
   });
-
-  /*
-  it ('Cannot forfeit a round if this address is not included in the round', async () => {
-    try {
-      await smartLeagues.forfeitRound('test', {from: accounts[5]});
-    } catch(e) {
-      assert(e.message.includes('Address is not included in this leagues round'));
-      return;
-    }
-    assert(false);
-  });
-  */
-
-  /*
-  it('Player3 successfully forfeits the round, check round variables', async () => {
-    let index = await smartLeagues.addressInRound('test', accounts[2]);
-    assert(index == 2);
-    let result = await smartLeagues.getLeagueRoundPlayerInfo('test', accounts[2]);
-    assert(!result.scoresSubmitted);
-    await smartLeagues.forfeitRound('test', {from: accounts[2]});
-    result = await smartLeagues.getLeagueRoundPlayerInfo('test', accounts[2]);
-    assert(result.scoresSubmitted);
-  });
-  */
-
-  /*
-  it('Cannot forfeit round if scores have already been submitted', async () => {
-    try {
-      await smartLeagues.forfeitRound('test', {from: accounts[2]});
-    } catch(e) {
-      assert(e.message.includes('Scores already submitted'));
-      return;
-    }
-    assert(false);
-  });
-  */
 
   it('Player3 submits scores and check player state variables', async () => {
     try {
