@@ -3,7 +3,6 @@ const SmartLeagues = artifacts.require("SmartLeagues.sol");
 const BN = require('bn.js');
 const { assert } = require('console');
 
-
 /*
  * uncomment accounts to access the test accounts made available by the
  * Ethereum client
